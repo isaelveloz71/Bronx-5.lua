@@ -1,89 +1,120 @@
--- Menú manual para South Bronx (sin Orion)
-local ScreenGui = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
-local AutoFarm = Instance.new("TextButton")
-local AutoRob = Instance.new("TextButton")
-local AutoCollect = Instance.new("TextButton")
-local AutoSell = Instance.new("TextButton")
-local Aimbot = Instance.new("TextButton")
+--// Cargar la librería del menú
+local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
 
-ScreenGui.Parent = game.CoreGui
-Frame.Parent = ScreenGui
-Frame.Size = UDim2.new(0, 200, 0, 300)
-Frame.Position = UDim2.new(0, 10, 0, 10)
-Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+--// Crear la ventana del menú
+local Window = OrionLib:MakeWindow({Name = "South Bronx Autofarm", HidePremium = false, SaveConfig = true, ConfigFolder = "SouthBronxConfig"})
 
-local buttons = {AutoFarm, AutoRob, AutoCollect, AutoSell, Aimbot}
-local names = {"AutoFarm NPCs", "AutoRob", "AutoCollect", "AutoSell", "Aimbot"}
-local toggles = {false, false, false, false, false}
+-- Variables de configuración
+local autofarmNPC = false
+local autofarmBank = false
+local autofarmATM = false
 
-for i,btn in ipairs(buttons) do
-	btn.Parent = Frame
-	btn.Size = UDim2.new(1, -10, 0, 40)
-	btn.Position = UDim2.new(0, 5, 0, 5 + (i-1)*45)
-	btn.Text = names[i]
-	btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-	btn.MouseButton1Click:Connect(function()
-		toggles[i] = not toggles[i]
-		btn.BackgroundColor3 = toggles[i] and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(50,50,50)
-	end)
+-- Funciones principales
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+local function tpTo(position)
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.CFrame = CFrame.new(position)
+    end
 end
 
--- Funciones automáticas
-game:GetService("RunService").RenderStepped:Connect(function()
-    local player = game.Players.LocalPlayer
-    local char = player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    if toggles[1] then -- AutoFarm
-        for _, npc in pairs(workspace:GetDescendants()) do
-            if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-                if npc.Humanoid.Health > 0 then
-                    root.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,0,2)
-                    break
-                end
+local function findNearestNPC()
+    local nearest, dist = nil, math.huge
+    for _, npc in pairs(workspace.NPCs:GetChildren()) do
+        if npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
+            local magnitude = (npc.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            if magnitude < dist then
+                nearest = npc
+                dist = magnitude
             end
         end
     end
+    return nearest
+end
 
-    if toggles[2] then -- AutoRob
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Part") and (obj.Name:lower():find("bank") or obj.Name:lower():find("atm")) then
-                root.CFrame = obj.CFrame * CFrame.new(0,2,0)
-                local click = obj:FindFirstChildWhichIsA("ClickDetector")
-                if click then fireclickdetector(click) end
-                break
-            end
+local function attackNPC(npc)
+    local tool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool") or LocalPlayer.Character:FindFirstChildOfClass("Tool")
+    if tool then
+        tool:Activate()
+    end
+end
+
+local function robATM()
+    for _, atm in pairs(workspace.ATMs:GetChildren()) do
+        if atm:FindFirstChild("ProximityPrompt") then
+            tpTo(atm.Position)
+            wait(0.5)
+            fireproximityprompt(atm.ProximityPrompt)
+            wait(2)
         end
     end
+end
 
-    if toggles[3] then -- AutoCollect
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Part") and (obj.Name:lower():find("bag") or obj.Name:lower():find("drop") or obj.Name:lower():find("gelatin")) then
-                root.CFrame = obj.CFrame * CFrame.new(0,2,0)
-                break
+local function robBank()
+    local bankDoor = workspace:FindFirstChild("BankDoor")
+    if bankDoor and bankDoor:FindFirstChild("ProximityPrompt") then
+        tpTo(bankDoor.Position)
+        wait(0.5)
+        fireproximityprompt(bankDoor.ProximityPrompt)
+        wait(2)
+    end
+end
+
+-- Página principal
+local MainTab = Window:MakeTab({
+    Name = "Autofarm",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+MainTab:AddToggle({
+    Name = "Autofarm NPCs",
+    Default = false,
+    Callback = function(Value)
+        autofarmNPC = Value
+    end
+})
+
+MainTab:AddToggle({
+    Name = "Autofarm ATMs",
+    Default = false,
+    Callback = function(Value)
+        autofarmATM = Value
+    end
+})
+
+MainTab:AddToggle({
+    Name = "Autofarm Banco",
+    Default = false,
+    Callback = function(Value)
+        autofarmBank = Value
+    end
+})
+
+-- Loop de autofarm
+RunService.RenderStepped:Connect(function()
+    pcall(function()
+        if autofarmNPC then
+            local npc = findNearestNPC()
+            if npc then
+                tpTo(npc.HumanoidRootPart.Position + Vector3.new(0,2,0))
+                attackNPC(npc)
             end
         end
-    end
 
-    if toggles[4] then -- AutoSell
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Part") and (obj.Name:lower():find("sell") or obj.Name:lower():find("vendedor") or obj.Name:lower():find("trade")) then
-                root.CFrame = obj.CFrame * CFrame.new(0,2,0)
-                break
-            end
+        if autofarmATM then
+            robATM()
         end
-    end
 
-    if toggles[5] then -- Aimbot
-        local cam = workspace.CurrentCamera
-        for _, npc in pairs(workspace:GetDescendants()) do
-            if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-                cam.CFrame = CFrame.new(cam.CFrame.Position, npc.HumanoidRootPart.Position)
-                break
-            end
+        if autofarmBank then
+            robBank()
         end
-    end
+    end)
 end)
+
+OrionLib:Init()
+
+-- Fin del script
