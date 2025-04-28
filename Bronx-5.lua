@@ -1,154 +1,89 @@
--- Cargar librería de menú
-local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+-- Menú manual para South Bronx (sin Orion)
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local AutoFarm = Instance.new("TextButton")
+local AutoRob = Instance.new("TextButton")
+local AutoCollect = Instance.new("TextButton")
+local AutoSell = Instance.new("TextButton")
+local Aimbot = Instance.new("TextButton")
 
--- Flags para activar o no
-local Flags = {
-    AutoFarm = false,
-    AutoRob = false,
-    AutoCollect = false,
-    AutoSell = false,
-    Aimbot = false,
-}
+ScreenGui.Parent = game.CoreGui
+Frame.Parent = ScreenGui
+Frame.Size = UDim2.new(0, 200, 0, 300)
+Frame.Position = UDim2.new(0, 10, 0, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 
--- Funciones principales
-local function getClosestEnemy()
-    local closest, shortest = nil, math.huge
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Name ~= LocalPlayer.Name then
-            local dist = (v.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-            if dist < shortest and v.Humanoid.Health > 0 then
-                shortest = dist
-                closest = v
-            end
-        end
-    end
-    return closest
+local buttons = {AutoFarm, AutoRob, AutoCollect, AutoSell, Aimbot}
+local names = {"AutoFarm NPCs", "AutoRob", "AutoCollect", "AutoSell", "Aimbot"}
+local toggles = {false, false, false, false, false}
+
+for i,btn in ipairs(buttons) do
+	btn.Parent = Frame
+	btn.Size = UDim2.new(1, -10, 0, 40)
+	btn.Position = UDim2.new(0, 5, 0, 5 + (i-1)*45)
+	btn.Text = names[i]
+	btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+	btn.MouseButton1Click:Connect(function()
+		toggles[i] = not toggles[i]
+		btn.BackgroundColor3 = toggles[i] and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(50,50,50)
+	end)
 end
 
-local function findObjectByName(keywords)
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Part") then
-            for _, word in pairs(keywords) do
-                if v.Name:lower():find(word) then
-                    return v
+-- Funciones automáticas
+game:GetService("RunService").RenderStepped:Connect(function()
+    local player = game.Players.LocalPlayer
+    local char = player.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    if toggles[1] then -- AutoFarm
+        for _, npc in pairs(workspace:GetDescendants()) do
+            if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+                if npc.Humanoid.Health > 0 then
+                    root.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,0,2)
+                    break
                 end
             end
         end
     end
-    return nil
-end
 
--- RunService para manejar todo en un solo render step (super rápido)
-RunService.RenderStepped:Connect(function()
-    if Flags.AutoFarm then
-        local target = getClosestEnemy()
-        if target then
-            HumanoidRootPart.CFrame = target.HumanoidRootPart.CFrame * CFrame.new(0,0,2)
-        end
-    end
-
-    if Flags.AutoRob then
-        local atmOrBank = findObjectByName({"atm", "bank"})
-        if atmOrBank then
-            HumanoidRootPart.CFrame = atmOrBank.CFrame * CFrame.new(0,2,0)
-            local click = atmOrBank:FindFirstChildWhichIsA("ClickDetector")
-            if click then
-                fireclickdetector(click)
+    if toggles[2] then -- AutoRob
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Part") and (obj.Name:lower():find("bank") or obj.Name:lower():find("atm")) then
+                root.CFrame = obj.CFrame * CFrame.new(0,2,0)
+                local click = obj:FindFirstChildWhichIsA("ClickDetector")
+                if click then fireclickdetector(click) end
+                break
             end
         end
     end
 
-    if Flags.AutoCollect then
-        local item = findObjectByName({"bag", "drop", "gelatin", "item"})
-        if item then
-            HumanoidRootPart.CFrame = item.CFrame * CFrame.new(0,2,0)
+    if toggles[3] then -- AutoCollect
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Part") and (obj.Name:lower():find("bag") or obj.Name:lower():find("drop") or obj.Name:lower():find("gelatin")) then
+                root.CFrame = obj.CFrame * CFrame.new(0,2,0)
+                break
+            end
         end
     end
 
-    if Flags.AutoSell then
-        local sellZone = findObjectByName({"sell", "vendedor", "trade"})
-        if sellZone then
-            HumanoidRootPart.CFrame = sellZone.CFrame * CFrame.new(0,2,0)
+    if toggles[4] then -- AutoSell
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Part") and (obj.Name:lower():find("sell") or obj.Name:lower():find("vendedor") or obj.Name:lower():find("trade")) then
+                root.CFrame = obj.CFrame * CFrame.new(0,2,0)
+                break
+            end
         end
     end
 
-    if Flags.Aimbot then
-        local enemy = getClosestEnemy()
-        if enemy then
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, enemy.HumanoidRootPart.Position)
+    if toggles[5] then -- Aimbot
+        local cam = workspace.CurrentCamera
+        for _, npc in pairs(workspace:GetDescendants()) do
+            if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
+                cam.CFrame = CFrame.new(cam.CFrame.Position, npc.HumanoidRootPart.Position)
+                break
+            end
         end
     end
 end)
-
--- Menú principal
-local Window = OrionLib:MakeWindow({Name = "South Bronx PRO Hub", HidePremium = false, SaveConfig = true, ConfigFolder = "SouthBronxPROHub"})
-
--- Tabs
-local FarmTab = Window:MakeTab({Name = "Autofarm", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local MiscTab = Window:MakeTab({Name = "Misc", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local PlayerTab = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-
--- Contenido de los Tabs
-FarmTab:AddToggle({
-	Name = "AutoFarm NPCs",
-	Default = false,
-	Callback = function(Value)
-		Flags.AutoFarm = Value
-	end
-})
-
-FarmTab:AddToggle({
-	Name = "Auto Rob Banks/ATMs",
-	Default = false,
-	Callback = function(Value)
-		Flags.AutoRob = Value
-	end
-})
-
-MiscTab:AddToggle({
-	Name = "Auto Collect Items",
-	Default = false,
-	Callback = function(Value)
-		Flags.AutoCollect = Value
-	end
-})
-
-MiscTab:AddToggle({
-	Name = "Auto Sell Items",
-	Default = false,
-	Callback = function(Value)
-		Flags.AutoSell = Value
-	end
-})
-
-MiscTab:AddToggle({
-	Name = "Aimbot (Lock Closest Enemy)",
-	Default = false,
-	Callback = function(Value)
-		Flags.Aimbot = Value
-	end
-})
-
-PlayerTab:AddSlider({
-	Name = "WalkSpeed",
-	Min = 16,
-	Max = 200,
-	Default = 16,
-	Increment = 1,
-	Callback = function(Value)
-		Character.Humanoid.WalkSpeed = Value
-	end
-})
-
--- Notificación
-OrionLib:MakeNotification({
-	Name = "South Bronx PRO Hub",
-	Content = "Menu cargado. Todas las funciones activas al instante!",
-	Image = "rbxassetid://4483345998",
-	Time = 5
-})
