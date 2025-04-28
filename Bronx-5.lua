@@ -1,18 +1,13 @@
---// Cargar la librería del menú
-local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
+-- Sin menú, solo autofarm básico
 
---// Crear la ventana del menú
-local Window = OrionLib:MakeWindow({Name = "South Bronx Autofarm", HidePremium = false, SaveConfig = true, ConfigFolder = "SouthBronxConfig"})
-
--- Variables de configuración
-local autofarmNPC = false
-local autofarmBank = false
-local autofarmATM = false
-
--- Funciones principales
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+
+-- Variables de configuración
+local autofarmNPC = true
+local autofarmATM = true
+local autofarmBank = true
 
 local function tpTo(position)
     local character = LocalPlayer.Character
@@ -63,37 +58,6 @@ local function robBank()
     end
 end
 
--- Página principal
-local MainTab = Window:MakeTab({
-    Name = "Autofarm",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
-
-MainTab:AddToggle({
-    Name = "Autofarm NPCs",
-    Default = false,
-    Callback = function(Value)
-        autofarmNPC = Value
-    end
-})
-
-MainTab:AddToggle({
-    Name = "Autofarm ATMs",
-    Default = false,
-    Callback = function(Value)
-        autofarmATM = Value
-    end
-})
-
-MainTab:AddToggle({
-    Name = "Autofarm Banco",
-    Default = false,
-    Callback = function(Value)
-        autofarmBank = Value
-    end
-})
-
 -- Loop de autofarm
 RunService.RenderStepped:Connect(function()
     pcall(function()
@@ -115,6 +79,4 @@ RunService.RenderStepped:Connect(function()
     end)
 end)
 
-OrionLib:Init()
-
--- Fin del script
+print("Autofarm funcionando sin menú.")
